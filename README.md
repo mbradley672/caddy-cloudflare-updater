@@ -1,5 +1,9 @@
 # Caddy Cloudflare DNS Updater
 
+[![Docker Hub](https://img.shields.io/docker/v/mbradley672/caddy-cloudflare-updater?label=Docker%20Hub)](https://hub.docker.com/r/mbradley672/caddy-cloudflare-updater)
+[![Build Status](https://github.com/mbradley672/caddy-cloudflare-updater/workflows/Build%20and%20Push%20Docker%20Image/badge.svg)](https://github.com/mbradley672/caddy-cloudflare-updater/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A Python application that automatically synchronizes domains from your Caddy configuration with Cloudflare DNS records. This tool monitors your Caddyfile and updates corresponding A/AAAA records in Cloudflare to point to your server's public IP address.
 
 ## Features
@@ -230,7 +234,10 @@ python main.py
 ## Changelog
 
 ### v1.0.0
-- Initial release
+- Initial release with Docker Hub support
 - Basic Caddyfile parsing and Cloudflare DNS sync
-- Docker support
+- Docker support with multiple run modes
 - File watching capabilities
+- Comprehensive documentation and examples
+- Multi-platform Docker images (AMD64/ARM64)
+- GitHub Actions CI/CD pipeline
