@@ -10,6 +10,7 @@ docker pull mbradley672/caddy-cloudflare-updater:latest
 
 ### Method 1: Docker Run (Simple)
 
+**Linux/macOS:**
 ```bash
 docker run -d \
   --name caddy-dns-updater \
@@ -18,8 +19,36 @@ docker run -d \
   -e CF_ZONE_ID=your_cloudflare_zone_id \
   -e CF_DOMAIN=example.com \
   -e RUN_MODE=watcher \
-  -v /path/to/your/Caddyfile:/etc/caddy/Caddyfile:ro \
+  -v /etc/caddy/Caddyfile:/etc/caddy/Caddyfile:ro \
   -v ./logs:/var/log \
+  mbradley672/caddy-cloudflare-updater:latest
+```
+
+**Windows (PowerShell):**
+```powershell
+docker run -d `
+  --name caddy-dns-updater `
+  --restart unless-stopped `
+  -e CF_API_TOKEN=your_cloudflare_api_token `
+  -e CF_ZONE_ID=your_cloudflare_zone_id `
+  -e CF_DOMAIN=example.com `
+  -e RUN_MODE=watcher `
+  -v C:\caddy\Caddyfile:/etc/caddy/Caddyfile:ro `
+  -v ${PWD}\logs:/var/log `
+  mbradley672/caddy-cloudflare-updater:latest
+```
+
+**Windows (Command Prompt):**
+```cmd
+docker run -d ^
+  --name caddy-dns-updater ^
+  --restart unless-stopped ^
+  -e CF_API_TOKEN=your_cloudflare_api_token ^
+  -e CF_ZONE_ID=your_cloudflare_zone_id ^
+  -e CF_DOMAIN=example.com ^
+  -e RUN_MODE=watcher ^
+  -v C:\caddy\Caddyfile:/etc/caddy/Caddyfile:ro ^
+  -v %CD%\logs:/var/log ^
   mbradley672/caddy-cloudflare-updater:latest
 ```
 
@@ -46,7 +75,11 @@ services:
       - LOG_LEVEL=INFO
       - RUN_MODE=watcher
     volumes:
-      - /path/to/your/Caddyfile:/etc/caddy/Caddyfile:ro
+      # CHANGE THIS: Update the path to your actual Caddyfile location
+      # Linux/macOS: /etc/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Windows: C:/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Custom path: /home/user/mycaddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - /etc/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./logs:/var/log
 ```
 
@@ -80,21 +113,45 @@ docker-compose up -d
 - **Caddyfile**: Mount your Caddyfile to `/etc/caddy/Caddyfile:ro` (read-only)
 - **Logs**: Optionally mount `/var/log` to persist logs on the host
 
+#### Common Caddyfile Locations
+
+| System | Typical Location | Docker Mount Example |
+|--------|------------------|---------------------|
+| **Linux (systemd)** | `/etc/caddy/Caddyfile` | `-v /etc/caddy/Caddyfile:/etc/caddy/Caddyfile:ro` |
+| **Linux (manual)** | `/opt/caddy/Caddyfile` | `-v /opt/caddy/Caddyfile:/etc/caddy/Caddyfile:ro` |
+| **macOS (Homebrew)** | `/opt/homebrew/etc/Caddyfile` | `-v /opt/homebrew/etc/Caddyfile:/etc/caddy/Caddyfile:ro` |
+| **Windows** | `C:\caddy\Caddyfile` | `-v C:\caddy\Caddyfile:/etc/caddy/Caddyfile:ro` |
+| **Docker Compose** | `./Caddyfile` | `-v ./Caddyfile:/etc/caddy/Caddyfile:ro` |
+| **Custom location** | `/home/user/config/Caddyfile` | `-v /home/user/config/Caddyfile:/etc/caddy/Caddyfile:ro` |
+
+💡 **Tip**: Use `find / -name "Caddyfile" 2>/dev/null` on Linux/macOS to locate your Caddyfile
+
 ## Examples
 
 ### One-time Sync
 ```bash
+# Linux/macOS
 docker run --rm \
   -e CF_API_TOKEN=your_token \
   -e CF_ZONE_ID=your_zone_id \
   -e CF_DOMAIN=example.com \
   -e RUN_MODE=once \
-  -v /path/to/Caddyfile:/etc/caddy/Caddyfile:ro \
+  -v /etc/caddy/Caddyfile:/etc/caddy/Caddyfile:ro \
+  mbradley672/caddy-cloudflare-updater:latest
+
+# Windows
+docker run --rm \
+  -e CF_API_TOKEN=your_token \
+  -e CF_ZONE_ID=your_zone_id \
+  -e CF_DOMAIN=example.com \
+  -e RUN_MODE=once \
+  -v C:\caddy\Caddyfile:/etc/caddy/Caddyfile:ro \
   mbradley672/caddy-cloudflare-updater:latest
 ```
 
 ### Production Setup (Hybrid Mode)
 ```bash
+# Linux/macOS
 docker run -d \
   --name caddy-dns-updater \
   --restart unless-stopped \
@@ -106,17 +163,50 @@ docker run -d \
   -v /etc/caddy/Caddyfile:/etc/caddy/Caddyfile:ro \
   -v /var/log/caddy-updater:/var/log \
   mbradley672/caddy-cloudflare-updater:latest
+
+# Windows
+docker run -d \
+  --name caddy-dns-updater \
+  --restart unless-stopped \
+  -e CF_API_TOKEN=your_token \
+  -e CF_ZONE_ID=your_zone_id \
+  -e CF_DOMAIN=example.com \
+  -e RUN_MODE=hybrid \
+  -e LOG_LEVEL=INFO \
+  -v C:\caddy\Caddyfile:/etc/caddy/Caddyfile:ro \
+  -v C:\logs\caddy-updater:/var/log \
+  mbradley672/caddy-cloudflare-updater:latest
 ```
 
 ### With Custom Caddyfile Location
 ```bash
+# Homebrew macOS installation
+docker run -d \
+  --name caddy-dns-updater \
+  -e CF_API_TOKEN=your_token \
+  -e CF_ZONE_ID=your_zone_id \
+  -e CF_DOMAIN=example.com \
+  -v /opt/homebrew/etc/Caddyfile:/etc/caddy/Caddyfile:ro \
+  mbradley672/caddy-cloudflare-updater:latest
+
+# Custom user directory
 docker run -d \
   --name caddy-dns-updater \
   -e CF_API_TOKEN=your_token \
   -e CF_ZONE_ID=your_zone_id \
   -e CF_DOMAIN=example.com \
   -e CADDYFILE_PATH=/custom/path/Caddyfile \
-  -v /home/user/my-caddyfile:/custom/path/Caddyfile:ro \
+  -v /home/user/caddy-config/Caddyfile:/custom/path/Caddyfile:ro \
+  mbradley672/caddy-cloudflare-updater:latest
+
+# Docker Compose with Caddy
+docker run -d \
+  --name caddy-dns-updater \
+  --network caddy_network \
+  -e CF_API_TOKEN=your_token \
+  -e CF_ZONE_ID=your_zone_id \
+  -e CF_DOMAIN=example.com \
+  -v caddy_config:/etc/caddy/Caddyfile:ro \
   mbradley672/caddy-cloudflare-updater:latest
 ```
 
@@ -147,28 +237,70 @@ docker exec caddy-dns-updater tail -n 20 /var/log/caddy-updater.log
 
 ### Common Issues
 
-1. **Permission Denied for Caddyfile**
+1. **Caddyfile Not Found**
+   ```bash
+   # Find your Caddyfile location (Linux/macOS)
+   find / -name "Caddyfile" 2>/dev/null
+   
+   # Check if file exists and is readable
+   ls -la /path/to/your/Caddyfile
+   
+   # Windows - search for Caddyfile
+   Get-ChildItem -Path C:\ -Name "Caddyfile" -Recurse -ErrorAction SilentlyContinue
+   ```
+
+2. **Permission Denied for Caddyfile**
    ```bash
    # Make sure the file is readable
    chmod 644 /path/to/Caddyfile
+   
+   # Check file permissions
+   ls -la /path/to/Caddyfile
    ```
 
-2. **Invalid API Token**
+3. **Windows Path Issues**
+   ```bash
+   # Use forward slashes or escape backslashes
+   # Good: C:/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+   # Good: C:\\caddy\\Caddyfile:/etc/caddy/Caddyfile:ro
+   # Bad:  C:\caddy\Caddyfile:/etc/caddy/Caddyfile:ro
+   ```
+
+4. **Invalid API Token**
    ```bash
    # Test your token
    curl -X GET "https://api.cloudflare.com/client/v4/user" \
      -H "Authorization: Bearer YOUR_TOKEN"
    ```
 
-3. **Container Exits Immediately**
+5. **Container Exits Immediately**
    ```bash
    # Check logs for errors
    docker logs caddy-dns-updater
+   
+   # Run in foreground to see errors
+   docker run --rm \
+     -e CF_API_TOKEN=your_token \
+     -e CF_ZONE_ID=your_zone_id \
+     -e CF_DOMAIN=example.com \
+     -e RUN_MODE=once \
+     -v /path/to/Caddyfile:/etc/caddy/Caddyfile:ro \
+     mbradley672/caddy-cloudflare-updater:latest
    ```
 
-4. **No Domains Found**
-   - Verify your Caddyfile syntax
-   - Check if the Caddyfile path is correct inside the container
+6. **No Domains Found**
+   ```bash
+   # Verify Caddyfile is mounted correctly
+   docker exec caddy-dns-updater cat /etc/caddy/Caddyfile
+   
+   # Check Caddyfile syntax
+   docker exec caddy-dns-updater python -c "
+   from caddyparser import parse_caddyfile
+   with open('/etc/caddy/Caddyfile') as f:
+       config = parse_caddyfile(f.read())
+       print(config)
+   "
+   ```
 
 ### Debug Mode
 ```bash

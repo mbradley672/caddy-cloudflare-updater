@@ -1,3 +1,4 @@
+# Example docker-compose.yml for Linux/macOS systems
 version: "3.9"
 
 services:
@@ -5,8 +6,9 @@ services:
     image: mbradley672/caddy-cloudflare-updater:latest
     container_name: caddy-dns-updater
     restart: unless-stopped
+    
     environment:
-      # Required Cloudflare settings
+      # Required Cloudflare settings (set these in .env file)
       - CF_API_TOKEN=${CF_API_TOKEN}
       - CF_ZONE_ID=${CF_ZONE_ID}
       - CF_DOMAIN=${CF_DOMAIN}
@@ -15,17 +17,19 @@ services:
       - CADDYFILE_PATH=/etc/caddy/Caddyfile
       - LOG_LEVEL=INFO
       - RUN_MODE=watcher  # Options: once, watcher, cron, hybrid
+      
     volumes:
-      # Mount your Caddyfile - CHANGE THIS PATH to your actual Caddyfile location
-      # Examples:
-      # Linux/macOS:   /etc/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-      # Windows:       C:\caddy\Caddyfile:/etc/caddy/Caddyfile:ro
-      # Docker volume: caddy_config:/etc/caddy/Caddyfile:ro
+      # IMPORTANT: Change this path to your actual Caddyfile location!
+      # Common Linux locations:
+      # - /etc/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # - /opt/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # - ./Caddyfile:/etc/caddy/Caddyfile:ro (if in same directory)
       - /etc/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       
       # Optional: Mount log directory to host for persistence
       - ./logs:/var/log
-    
-    # Only needed if you want to access logs via HTTP
-    # ports:
-    #   - "8080:8080"
+
+# Remember to create a .env file with your Cloudflare credentials:
+# CF_API_TOKEN=your_cloudflare_api_token_here
+# CF_ZONE_ID=your_cloudflare_zone_id_here  
+# CF_DOMAIN=yourdomain.com

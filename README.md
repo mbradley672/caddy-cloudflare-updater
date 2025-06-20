@@ -27,14 +27,24 @@ Use the pre-built Docker image from Docker Hub:
 # Pull the image
 docker pull mbradley672/caddy-cloudflare-updater:latest
 
-# Run with Docker
+# Run with Docker (Linux/macOS example)
 docker run -d \
   --name caddy-dns-updater \
   --restart unless-stopped \
   -e CF_API_TOKEN=your_cloudflare_api_token \
   -e CF_ZONE_ID=your_cloudflare_zone_id \
   -e CF_DOMAIN=yourdomain.com \
-  -v /path/to/your/Caddyfile:/etc/caddy/Caddyfile:ro \
+  -v /etc/caddy/Caddyfile:/etc/caddy/Caddyfile:ro \
+  mbradley672/caddy-cloudflare-updater:latest
+
+# Windows example (adjust the path as needed)
+docker run -d \
+  --name caddy-dns-updater \
+  --restart unless-stopped \
+  -e CF_API_TOKEN=your_cloudflare_api_token \
+  -e CF_ZONE_ID=your_cloudflare_zone_id \
+  -e CF_DOMAIN=yourdomain.com \
+  -v C:\caddy\Caddyfile:/etc/caddy/Caddyfile:ro \
   mbradley672/caddy-cloudflare-updater:latest
 ```
 
@@ -61,15 +71,31 @@ CF_DOMAIN=yourdomain.com
 CADDYFILE_PATH=/etc/caddy/Caddyfile
 ```
 
-4. Update the `docker-compose.yml` to point to your actual Caddyfile:
+4. Choose the appropriate docker-compose file for your system:
+   - **Linux/macOS**: Use `docker-compose.linux.yml` 
+   - **Windows**: Use `docker-compose.windows.yml`
+   - **Generic**: Use `docker-compose.hub.yml`
+
+5. Update the Caddyfile path in your chosen compose file:
 ```yaml
 volumes:
-  - /path/to/your/Caddyfile:/etc/caddy/Caddyfile:ro
+  # Linux/macOS example:
+  - /etc/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+  
+  # Windows example:  
+  - C:/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+  
+  # Same directory:
+  - ./Caddyfile:/etc/caddy/Caddyfile:ro
 ```
 
-5. Run with Docker Compose:
+6. Run with Docker Compose:
 ```bash
-docker-compose up -d
+# Linux/macOS
+docker-compose -f docker-compose.linux.yml up -d
+
+# Windows  
+docker-compose -f docker-compose.windows.yml up -d
 ```
 
 ### Option 2: Python Virtual Environment

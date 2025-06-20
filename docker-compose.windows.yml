@@ -1,0 +1,35 @@
+# Example docker-compose.yml for Windows systems
+version: "3.9"
+
+services:
+  caddy-dns-updater:
+    image: mbradley672/caddy-cloudflare-updater:latest
+    container_name: caddy-dns-updater
+    restart: unless-stopped
+    
+    environment:
+      # Required Cloudflare settings (set these in .env file)
+      - CF_API_TOKEN=${CF_API_TOKEN}
+      - CF_ZONE_ID=${CF_ZONE_ID}
+      - CF_DOMAIN=${CF_DOMAIN}
+      
+      # Optional settings
+      - CADDYFILE_PATH=/etc/caddy/Caddyfile
+      - LOG_LEVEL=INFO
+      - RUN_MODE=watcher  # Options: once, watcher, cron, hybrid
+      
+    volumes:
+      # IMPORTANT: Change this path to your actual Caddyfile location!
+      # Windows examples (use forward slashes):
+      # - C:/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # - C:/ProgramData/Caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # - ./Caddyfile:/etc/caddy/Caddyfile:ro (if in same directory)
+      - C:/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      
+      # Optional: Mount log directory to host for persistence
+      - ./logs:/var/log
+
+# Remember to create a .env file with your Cloudflare credentials:
+# CF_API_TOKEN=your_cloudflare_api_token_here
+# CF_ZONE_ID=your_cloudflare_zone_id_here  
+# CF_DOMAIN=yourdomain.com
