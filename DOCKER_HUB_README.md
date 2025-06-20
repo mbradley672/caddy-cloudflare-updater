@@ -292,13 +292,16 @@ docker exec caddy-dns-updater tail -n 20 /var/log/caddy-updater.log
    ```bash
    # Verify Caddyfile is mounted correctly
    docker exec caddy-dns-updater cat /etc/caddy/Caddyfile
-   
-   # Check Caddyfile syntax
+     # Check Caddyfile syntax and domains
    docker exec caddy-dns-updater python -c "
-   from caddyparser import parse_caddyfile
-   with open('/etc/caddy/Caddyfile') as f:
-       config = parse_caddyfile(f.read())
-       print(config)
+   import sys
+   sys.path.append('/app')
+   from main import get_caddy_domains
+   try:
+       domains = get_caddy_domains('/etc/caddy/Caddyfile')
+       print(f'Found domains: {domains}')
+   except Exception as e:
+       print(f'Error: {e}')
    "
    ```
 

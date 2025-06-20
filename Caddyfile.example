@@ -1,0 +1,28 @@
+# Example Caddyfile for testing
+# This shows the typical format that the parser supports
+
+example.com {
+    reverse_proxy localhost:8080
+}
+
+api.example.com {
+    reverse_proxy localhost:3000
+}
+
+# Another common format
+blog.example.com, www.blog.example.com {
+    root * /var/www/blog
+    file_server
+}
+
+# Simple format
+app.example.com
+reverse_proxy localhost:9000
+
+# With subdomain
+admin.mysite.com {
+    basicauth {
+        admin $2a$10$...
+    }
+    reverse_proxy localhost:8081
+}

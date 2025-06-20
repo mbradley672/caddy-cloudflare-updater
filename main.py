@@ -3,7 +3,7 @@ import os
 import sys
 import requests
 import logging
-from caddyparser import parse_caddyfile
+import re
 from ipaddress import ip_address
 from datetime import datetime
 
@@ -18,6 +18,53 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+def parse_caddyfile(content):
+    """Simple Caddyfile parser to extract domain names"""
+    domains = set()
+    
+    # Remove comments
+    lines = []
+    for line in content.split('\n'):
+        # Remove comments (everything after #)
+        line = line.split('#')[0].strip()
+        if line:
+            lines.append(line)
+    
+    # Join lines and split by blocks
+    content = ' '.join(lines)
+    
+    # Extract domains using regex patterns
+    # Pattern 1: domain.com { ... }
+    domain_blocks = re.findall(r'([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\s*\{', content)
+    domains.update(domain_blocks)
+    
+    # Pattern 2: *.domain.com or subdomain.domain.com
+    wildcard_domains = re.findall(r'(\*\.)?([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', content)
+    for wildcard, domain in wildcard_domains:
+        if not wildcard:  # Skip wildcards for now, add the domain
+            domains.add(domain)
+    
+    # Pattern 3: Simple domain at start of line
+    for line in content.split('\n'):
+        line = line.strip()
+        if line and not line.startswith('{') and not line.startswith('}'):
+            # Check if line starts with a domain
+            domain_match = re.match(r'^([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', line)
+            if domain_match:
+                domains.add(domain_match.group(1))
+    
+    # Filter out common false positives
+    filtered_domains = set()
+    for domain in domains:
+        # Skip localhost, example domains, and IP addresses
+        if (not domain.startswith('localhost') and 
+            not domain.startswith('example.') and
+            not domain.startswith('test.') and
+            not re.match(r'^\d+\.\d+\.\d+\.\d+', domain)):
+            filtered_domains.add(domain)
+    
+    return [{"keys": list(filtered_domains)}] if filtered_domains else []
 
 def get_public_ip():
     """Get the server's public IP address"""
@@ -37,15 +84,17 @@ def get_caddy_domains(file_path):
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"Caddyfile not found at {file_path}")
         
-        with open(file_path) as f:
-            config = parse_caddyfile(f.read())
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        config = parse_caddyfile(content)
         
         domains = set()
         for block in config:
             if "keys" in block:
                 domains.update(block["keys"])
         
-        logger.info(f"Found {len(domains)} domains in Caddyfile: {', '.join(domains)}")
+        logger.info(f"Found {len(domains)} domains in Caddyfile: {', '.join(sorted(domains))}")
         return domains
     except Exception as e:
         logger.error(f"Failed to parse Caddyfile: {e}")
