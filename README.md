@@ -19,7 +19,28 @@ A Python application that automatically synchronizes domains from your Caddy con
 
 ## Installation
 
-### Option 1: Docker (Recommended)
+### Option 1: Docker Hub (Easiest)
+
+Use the pre-built Docker image from Docker Hub:
+
+```bash
+# Pull the image
+docker pull mbradley672/caddy-cloudflare-updater:latest
+
+# Run with Docker
+docker run -d \
+  --name caddy-dns-updater \
+  --restart unless-stopped \
+  -e CF_API_TOKEN=your_cloudflare_api_token \
+  -e CF_ZONE_ID=your_cloudflare_zone_id \
+  -e CF_DOMAIN=yourdomain.com \
+  -v /path/to/your/Caddyfile:/etc/caddy/Caddyfile:ro \
+  mbradley672/caddy-cloudflare-updater:latest
+```
+
+📖 **See [DOCKER_HUB_README.md](DOCKER_HUB_README.md) for detailed Docker Hub usage instructions**
+
+### Option 2: Build from Source (Docker)
 
 1. Clone this repository:
 ```bash
