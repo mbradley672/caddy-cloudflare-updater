@@ -1,0 +1,7 @@
+version: "3.9"
+services:
+  caddy-dns-updater:
+    build: .
+    env_file: .env
+    volumes:
+      - /path/to/Caddyfile:/etc/caddy/Caddyfile:ro

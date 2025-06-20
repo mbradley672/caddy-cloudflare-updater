@@ -1,0 +1,1 @@
+*/10 * * * * root python /app/main.py >> /var/log/caddy-updater.log 2>&1
