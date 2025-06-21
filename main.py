@@ -10,6 +10,11 @@ import logging
 import requests
 from ipaddress import ip_address
 
+try:
+    from version import __version__
+except ImportError:
+    __version__ = "unknown"
+
 # Configure logging
 log_level = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
@@ -289,6 +294,7 @@ def sync_to_cloudflare(subdomains, ip):
 def run_sync():
     """Main synchronization function"""
     try:
+        logger.info(f"=== Caddy Cloudflare DNS Updater v{__version__} ===")
         logger.info("=== Starting DNS synchronization ===")
         
         # Get current public IP

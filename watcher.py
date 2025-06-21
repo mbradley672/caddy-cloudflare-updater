@@ -9,12 +9,13 @@ from watchdog.events import FileSystemEventHandler
 
 # Configure logging
 log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+log_file = os.getenv("LOG_FILE", "./caddy-updater.log")
 logging.basicConfig(
     level=getattr(logging, log_level),
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler('/var/log/caddy-updater.log')
+        logging.FileHandler(log_file)
     ]
 )
 logger = logging.getLogger(__name__)
@@ -38,8 +39,12 @@ class CaddyfileChangeHandler(FileSystemEventHandler):
             self.last_sync = current_time
             
             try:
+                # Use the current Python executable and correct path
+                python_exe = sys.executable
+                main_py_path = os.path.join(os.path.dirname(__file__), "main.py")
+                
                 result = subprocess.run(
-                    ["python", "/app/main.py"], 
+                    [python_exe, main_py_path], 
                     capture_output=True, 
                     text=True,
                     timeout=300  # 5 minute timeout
@@ -69,10 +74,11 @@ def watch(path):
     try:
         observer.start()
         logger.info(f"Watching {path} for changes...")
-        
-        # Run initial sync
+          # Run initial sync
         logger.info("Running initial DNS sync...")
-        subprocess.run(["python", "/app/main.py"])
+        python_exe = sys.executable
+        main_py_path = os.path.join(os.path.dirname(__file__), "main.py")
+        subprocess.run([python_exe, main_py_path])
         
         # Keep watching
         while True:

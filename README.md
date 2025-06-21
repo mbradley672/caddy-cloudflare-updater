@@ -33,6 +33,35 @@ docker run -d \
 
 > 📖 **For detailed Docker Hub usage instructions, see [DOCKER_HUB_README.md](DOCKER_HUB_README.md)**
 
+### Native Linux Installation (New in v1.0.3)
+
+For running directly on Linux without Docker:
+
+```bash
+# Clone the repository
+git clone https://github.com/mbradley672/caddy-cloudflare-updater.git
+cd caddy-cloudflare-updater
+
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Set up environment variables
+export CF_API_TOKEN="your_cloudflare_api_token"
+export CF_ZONE_ID="your_cloudflare_zone_id"
+export CF_DOMAIN="yourdomain.com"
+
+# Test your setup
+python setup_env.py
+
+# Run the updater
+python main.py
+```
+
+**Run Modes:**
+- `python main.py` - Single sync
+- `python watcher.py` - File watcher mode
+- Set `RUN_MODE=cron` and run `python main.py` for scheduled mode
+
 ## ✨ Key Features
 
 - **🔄 Automatic DNS Sync**: Reads domains from Caddyfile and creates/updates Cloudflare DNS records
