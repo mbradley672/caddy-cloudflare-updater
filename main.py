@@ -1,21 +1,20 @@
-# main.py
+#!/usr/bin/env python3
+"""
+Caddy Cloudflare DNS Updater
+Automatically sync domains from Caddyfile to Cloudflare DNS records
+"""
+
 import os
-import sys
-import requests
-import logging
 import re
+import logging
+import requests
 from ipaddress import ip_address
-from datetime import datetime
 
 # Configure logging
 log_level = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
     level=getattr(logging, log_level),
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler('/var/log/caddy-updater.log')
-    ]
+    format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
@@ -23,7 +22,7 @@ def parse_caddyfile(content):
     """Simple Caddyfile parser to extract domain names"""
     domains = set()
     
-    # Remove comments
+    # Remove comments and clean content
     lines = []
     for line in content.split('\n'):
         # Remove comments (everything after #)
@@ -31,40 +30,137 @@ def parse_caddyfile(content):
         if line:
             lines.append(line)
     
-    # Join lines and split by blocks
-    content = ' '.join(lines)
+    # Process line by line to find domain blocks
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
+        
+        # Skip empty lines, directives, and block delimiters
+        if (not line or 
+            line.startswith('{') or 
+            line.startswith('}') or
+            line.startswith('import') or
+            line.startswith('log') or
+            line.startswith('tls') or
+            line.startswith('reverse_proxy') or
+            line.startswith('file_server') or
+            line.startswith('root') or
+            line.startswith('header') or
+            line.startswith('encode') or
+            line.startswith('redir') or
+            line.startswith('handle') or
+            line.startswith('route') or
+            line.startswith('respond') or
+            line.startswith('rewrite') or
+            line.startswith('uri') or
+            line.startswith('try_files') or
+            line.startswith('@') or  # matchers
+            '=' in line):  # variable assignments
+            i += 1
+            continue
+        
+        # Look for domain patterns at the start of blocks
+        # Pattern: domain.com {
+        domain_block_match = re.match(r'^([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\s*\{', line)
+        if domain_block_match:
+            domain = domain_block_match.group(1)
+            if is_valid_domain(domain):
+                domains.add(domain)
+            i += 1
+            continue
+        
+        # Pattern: domain1.com, domain2.com {
+        multi_domain_match = re.match(r'^([a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:\s*,\s*[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})*)\s*\{', line)
+        if multi_domain_match:
+            domain_list = multi_domain_match.group(1)
+            for domain in domain_list.split(','):
+                domain = domain.strip()
+                if is_valid_domain(domain):
+                    domains.add(domain)
+            i += 1
+            continue
+        
+        # Pattern: standalone domain (followed by opening brace on next line)
+        if (i + 1 < len(lines) and 
+            lines[i + 1].strip() == '{' and
+            re.match(r'^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', line)):
+            if is_valid_domain(line):
+                domains.add(line)
+            i += 1
+            continue
+        
+        # Pattern: multiple domains on one line followed by brace
+        domain_list_match = re.match(r'^([a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:\s*,\s*[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})*)$', line)
+        if (domain_list_match and 
+            i + 1 < len(lines) and 
+            lines[i + 1].strip() == '{'):
+            domain_list = domain_list_match.group(1)
+            for domain in domain_list.split(','):
+                domain = domain.strip()
+                if is_valid_domain(domain):
+                    domains.add(domain)
+            i += 1
+            continue
+        
+        i += 1
     
-    # Extract domains using regex patterns
-    # Pattern 1: domain.com { ... }
-    domain_blocks = re.findall(r'([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\s*\{', content)
-    domains.update(domain_blocks)
+    return list(domains)
+
+def is_valid_domain(domain):
+    """Validate if a string is a valid domain name"""
+    if not domain:
+        return False
     
-    # Pattern 2: *.domain.com or subdomain.domain.com
-    wildcard_domains = re.findall(r'(\*\.)?([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', content)
-    for wildcard, domain in wildcard_domains:
-        if not wildcard:  # Skip wildcards for now, add the domain
-            domains.add(domain)
+    # Reject domains that start with a dot (like .beavis.tech)
+    if domain.startswith('.'):
+        return False
     
-    # Pattern 3: Simple domain at start of line
-    for line in content.split('\n'):
-        line = line.strip()
-        if line and not line.startswith('{') and not line.startswith('}'):
-            # Check if line starts with a domain
-            domain_match = re.match(r'^([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', line)
-            if domain_match:
-                domains.add(domain_match.group(1))
+    # Remove trailing dots
+    domain = domain.rstrip('.')
     
-    # Filter out common false positives
-    filtered_domains = set()
-    for domain in domains:
-        # Skip localhost, example domains, and IP addresses
-        if (not domain.startswith('localhost') and 
-            not domain.startswith('example.') and
-            not domain.startswith('test.') and
-            not re.match(r'^\d+\.\d+\.\d+\.\d+', domain)):
-            filtered_domains.add(domain)
+    # Basic validation
+    if (len(domain) < 4 or  # minimum: a.co
+        len(domain) > 253 or  # maximum domain length
+        domain.startswith('-') or
+        domain.endswith('-') or
+        '..' in domain or
+        domain.startswith('localhost') or
+        domain.startswith('example.') or
+        domain.startswith('test.') or
+        domain.endswith('.key') or
+        domain.endswith('.pem') or
+        domain.endswith('.crt') or
+        domain.endswith('.cert') or
+        domain.endswith('.p12') or
+        domain.endswith('.pfx') or
+        'env.' in domain.lower() or
+        'cloudflare' in domain.lower() and not domain.endswith('.com')):
+        return False
     
-    return [{"keys": list(filtered_domains)}] if filtered_domains else []
+    # Check if it's an IP address
+    if re.match(r'^\d+\.\d+\.\d+\.\d+$', domain):
+        return False
+    
+    # Must contain at least one dot and have valid TLD
+    parts = domain.split('.')
+    if len(parts) < 2:
+        return False
+    
+    # TLD should be at least 2 characters and only letters
+    tld = parts[-1]
+    if len(tld) < 2 or not tld.isalpha():
+        return False
+    
+    # Each part should be valid
+    for part in parts:
+        if (not part or 
+            len(part) > 63 or
+            part.startswith('-') or
+            part.endswith('-') or
+            not re.match(r'^[a-zA-Z0-9-]+$', part)):
+            return False
+    
+    return True
 
 def get_public_ip():
     """Get the server's public IP address"""
@@ -87,15 +183,16 @@ def get_caddy_domains(file_path):
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
         
-        config = parse_caddyfile(content)
+        domains = parse_caddyfile(content)
         
-        domains = set()
-        for block in config:
-            if "keys" in block:
-                domains.update(block["keys"])
+        if domains:
+            logger.info(f"Found {len(domains)} valid domains in Caddyfile: {', '.join(sorted(domains))}")
+        else:
+            logger.warning("No valid domains found in Caddyfile - check your configuration")
+            # Log some debug info about what was found
+            logger.debug(f"Caddyfile content preview: {content[:200]}...")
         
-        logger.info(f"Found {len(domains)} domains in Caddyfile: {', '.join(sorted(domains))}")
-        return domains
+        return set(domains)
     except Exception as e:
         logger.error(f"Failed to parse Caddyfile: {e}")
         raise
@@ -171,7 +268,19 @@ def sync_to_cloudflare(subdomains, ip):
                 logger.info(f"Successfully created {fqdn}")
                 
     except requests.RequestException as e:
-        logger.error(f"Cloudflare API request failed: {e}")
+        error_details = ""
+        if hasattr(e, 'response') and e.response is not None:
+            try:
+                error_json = e.response.json()
+                if 'errors' in error_json and error_json['errors']:
+                    error_messages = [err.get('message', str(err)) for err in error_json['errors']]
+                    error_details = f" - API Errors: {'; '.join(error_messages)}"
+                elif 'message' in error_json:
+                    error_details = f" - API Message: {error_json['message']}"
+            except:
+                error_details = f" - Response: {e.response.text[:200] if e.response.text else 'No response body'}"
+        
+        logger.error(f"Cloudflare API request failed: {e}{error_details}")
         raise
     except Exception as e:
         logger.error(f"Failed to sync to Cloudflare: {e}")
@@ -195,12 +304,11 @@ def run_sync():
         
         # Sync to Cloudflare
         sync_to_cloudflare(domains, ip)
-        
         logger.info("=== DNS synchronization completed successfully ===")
         
     except Exception as e:
         logger.error(f"DNS synchronization failed: {e}")
-        sys.exit(1)
+        raise
 
 if __name__ == "__main__":
     run_sync()
